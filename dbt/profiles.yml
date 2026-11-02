@@ -1,0 +1,15 @@
+transactions:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      host: clickhouse
+      port: 8123
+      user: student
+      password: local_password
+      schema: analytics
+      threads: 2
+      secure: false
+      custom_settings:
+        max_threads: 2
+        final: 1

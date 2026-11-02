@@ -1,0 +1,349 @@
+version: 2
+models:
+- name: stg_transactions
+  description: Нормализация полей, дата, ключ клиента и группа суммы
+  data_tests:
+  - dbt_expectations.expect_table_row_count_to_be_between:
+      arguments:
+        min_value: 1
+  columns:
+  - name: transaction_id
+    description: Номер строки CSV
+    data_tests:
+    - not_null
+    - unique
+  - name: transaction_time
+    description: Время покупки
+    data_tests:
+    - not_null
+  - name: merchant
+    description: Название мерчанта без пробелов по краям
+    data_tests:
+    - not_null
+  - name: category
+    description: Категория в нижнем регистре
+    data_tests:
+    - not_null
+  - name: amount
+    description: Сумма покупки с двумя знаками
+    data_tests:
+    - not_null
+  - name: first_name
+    description: Имя клиента
+    data_tests:
+    - not_null
+  - name: last_name
+    description: Фамилия клиента
+    data_tests:
+    - not_null
+  - name: street
+    description: Адрес клиента
+    data_tests:
+    - not_null
+  - name: city
+    description: Город клиента
+    data_tests:
+    - not_null
+  - name: gender
+    description: Пол M или F
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - M
+          - F
+  - name: state
+    description: Код штата в верхнем регистре, включая DC
+    data_tests:
+    - not_null
+  - name: post_code
+    description: Почтовый индекс
+    data_tests:
+    - not_null
+  - name: lat
+    description: Широта клиента
+    data_tests:
+    - not_null
+  - name: lon
+    description: Долгота клиента
+    data_tests:
+    - not_null
+  - name: merchant_lat
+    description: Широта мерчанта
+    data_tests:
+    - not_null
+  - name: merchant_lon
+    description: Долгота мерчанта
+    data_tests:
+    - not_null
+  - name: target
+    description: Фактический фрод 0 или 1
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - 0
+          - 1
+          quote: false
+  - name: amount_group
+    description: SMALL до 100, MEDIUM от 100 до 1000, LARGE от 1000
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - SMALL
+          - MEDIUM
+          - LARGE
+  - name: customer_id
+    description: Ключ из имени и адреса, готового ID клиента в CSV нет
+    data_tests:
+    - not_null
+  - name: transaction_date
+    description: Дата покупки
+    data_tests:
+    - not_null
+  - name: transaction_hour
+    description: Час от 0 до 23, исходное время CSV
+    data_tests:
+    - not_null
+  - name: day_of_week
+    description: Понедельник 1, воскресенье 7
+    data_tests:
+    - not_null
+- name: mart_daily_state_metrics
+  description: Дневные метрики по штатам
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - transaction_date
+        - state
+  columns:
+  - name: transaction_date
+    description: Дата покупки
+    data_tests:
+    - not_null
+  - name: state
+    description: Штат, включая DC
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+  - name: average_amount
+    description: Средний чек
+    data_tests:
+    - not_null
+  - name: p95_amount
+    description: 95-й перцентиль суммы, quantileExact
+    data_tests:
+    - not_null
+  - name: large_share
+    description: Доля покупок от 1000 в процентах
+    data_tests:
+    - not_null
+- name: mart_fraud_by_category
+  description: Фрод по категориям
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - category
+  columns:
+  - name: category
+    description: Категория покупки
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: frauds
+    description: Количество транзакций с target=1
+    data_tests:
+    - not_null
+  - name: fraud_rate
+    description: Доля фрода в процентах от 0 до 100
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+  - name: fraud_amount
+    description: Сумма мошеннических покупок
+    data_tests:
+    - not_null
+- name: mart_fraud_by_state
+  description: Фрод по штатам
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - state
+  columns:
+  - name: state
+    description: Штат, включая DC
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: frauds
+    description: Количество транзакций с target=1
+    data_tests:
+    - not_null
+  - name: fraud_rate
+    description: Доля фрода в процентах от 0 до 100
+    data_tests:
+    - not_null
+  - name: customers
+    description: Число уникальных ключей клиентов
+    data_tests:
+    - not_null
+  - name: merchants
+    description: Число уникальных мерчантов
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+  - name: fraud_amount
+    description: Сумма мошеннических покупок
+    data_tests:
+    - not_null
+- name: mart_customer_risk_profile
+  description: Профили клиентов
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - customer_id
+  columns:
+  - name: customer_id
+    description: Ключ из имени и адреса, готового ID клиента в CSV нет
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: frauds
+    description: Количество транзакций с target=1
+    data_tests:
+    - not_null
+  - name: fraud_rate
+    description: Доля фрода в процентах от 0 до 100
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+  - name: average_amount
+    description: Средний чек
+    data_tests:
+    - not_null
+  - name: first_transaction
+    description: Первая покупка клиента
+    data_tests:
+    - not_null
+  - name: last_transaction
+    description: Последняя покупка клиента
+    data_tests:
+    - not_null
+  - name: risk_level
+    description: HIGH от 5%, MEDIUM от 1%, иначе LOW. Анализ истории, не прогноз
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - HIGH
+          - MEDIUM
+          - LOW
+- name: mart_hourly_fraud_pattern
+  description: Фрод по часам и дням недели
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - day_of_week
+        - transaction_hour
+  columns:
+  - name: day_of_week
+    description: Понедельник 1, воскресенье 7
+    data_tests:
+    - not_null
+  - name: transaction_hour
+    description: Час от 0 до 23, исходное время CSV
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: frauds
+    description: Количество транзакций с target=1
+    data_tests:
+    - not_null
+  - name: fraud_rate
+    description: Доля фрода в процентах от 0 до 100
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+- name: mart_merchant_analytics
+  description: Оборот и фрод мерчантов
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - merchant
+  columns:
+  - name: merchant
+    description: Мерчант
+    data_tests:
+    - not_null
+  - name: transactions
+    description: Количество транзакций
+    data_tests:
+    - not_null
+  - name: frauds
+    description: Количество транзакций с target=1
+    data_tests:
+    - not_null
+  - name: fraud_rate
+    description: Доля фрода в процентах от 0 до 100
+    data_tests:
+    - not_null
+  - name: total_amount
+    description: Сумма всех покупок
+    data_tests:
+    - not_null
+  - name: fraud_amount
+    description: Сумма мошеннических покупок
+    data_tests:
+    - not_null
+  - name: suspicious
+    description: 1 при fraud_rate от 5%, иначе 0
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - 0
+          - 1
+          quote: false

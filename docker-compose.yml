@@ -1,0 +1,142 @@
+name: transactions-dbt
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    volumes:
+    - zk_data:/var/lib/zookeeper/data
+    - zk_log:/var/lib/zookeeper/log
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+    - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms256m
+    volumes:
+    - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test:
+      - CMD
+      - kafka-topics
+      - --bootstrap-server
+      - kafka:9092
+      - --list
+      interval: 5s
+      timeout: 10s
+      retries: 30
+  kafka_setup:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint:
+    - kafka-topics
+    - --bootstrap-server
+    - kafka:9092
+    - --create
+    - --if-not-exists
+    - --topic
+    - transactions
+    - --partitions
+    - '1'
+    - --replication-factor
+    - '1'
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    environment:
+      CLICKHOUSE_USER: student
+      CLICKHOUSE_PASSWORD: local_password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+    - 127.0.0.1:8126:8123
+    volumes:
+    - ch_data:/var/lib/clickhouse
+    - ./sql:/sql:ro
+    healthcheck:
+      test:
+      - CMD
+      - clickhouse-client
+      - --user
+      - student
+      - --password
+      - local_password
+      - --query
+      - SELECT 1
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 3g
+  tables_setup:
+    image: clickhouse/clickhouse-server:25.8
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      kafka_setup:
+        condition: service_completed_successfully
+    volumes:
+    - ./sql:/sql:ro
+    entrypoint:
+    - /bin/sh
+    - -c
+    command:
+    - clickhouse-client --host clickhouse --user student --password local_password
+      --multiquery < /sql/tables.sql
+  tools:
+    build: .
+    profiles:
+    - tools
+    depends_on:
+      tables_setup:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: student
+      CLICKHOUSE_PASSWORD: local_password
+    volumes:
+    - ./data:/app/data:ro
+    - ./results:/app/results
+  dbt:
+    build:
+      context: .
+      dockerfile: dbt/Dockerfile
+    profiles:
+    - tools
+    working_dir: /project/dbt
+    environment:
+      DBT_PROFILES_DIR: /project/dbt
+      DBT_SEND_ANONYMOUS_USAGE_STATS: 'false'
+    volumes:
+    - ./:/project
+    depends_on:
+      tables_setup:
+        condition: service_completed_successfully
+    entrypoint:
+    - dbt
+  docs:
+    image: python:3.12-slim
+    profiles:
+    - docs
+    working_dir: /docs
+    volumes:
+    - ./dbt/target:/docs:ro
+    ports:
+    - 127.0.0.1:8086:8080
+    command:
+    - python
+    - -m
+    - http.server
+    - '8080'
+volumes:
+  zk_data: {}
+  zk_log: {}
+  kafka_data: {}
+  ch_data: {}

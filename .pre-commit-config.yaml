@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sqlfluff
+        name: sqlfluff
+        language: system
+        entry: docker compose run --rm --entrypoint sqlfluff dbt lint models tests
+        pass_filenames: false
+        files: ^dbt/.*\.sql$

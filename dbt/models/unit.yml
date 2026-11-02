@@ -1,0 +1,315 @@
+version: 2
+unit_tests:
+- name: category_totals
+  model: mart_fraud_by_category
+  given:
+  - input: ref('stg_transactions')
+    rows:
+    - category: food
+      amount: 100
+      target: 0
+    - category: food
+      amount: 300
+      target: 1
+    - category: travel
+      amount: 50
+      target: 0
+  expect:
+    rows:
+    - category: food
+      transactions: 2
+      frauds: 1
+      fraud_rate: 50
+      total_amount: 400
+      fraud_amount: 300
+    - category: travel
+      transactions: 1
+      frauds: 0
+      fraud_rate: 0
+      total_amount: 50
+      fraud_amount: 0
+- name: daily_metrics
+  model: mart_daily_state_metrics
+  given:
+  - input: ref('stg_transactions')
+    rows:
+    - transaction_date: '2020-01-01'
+      state: CA
+      amount: 100
+      amount_group: MEDIUM
+    - transaction_date: '2020-01-01'
+      state: CA
+      amount: 1000
+      amount_group: LARGE
+  expect:
+    rows:
+    - transaction_date: '2020-01-01'
+      state: CA
+      transactions: 2
+      total_amount: 1100
+      average_amount: 550
+      p95_amount: 1000
+      large_share: 50
+- name: risk_boundaries
+  model: mart_customer_risk_profile
+  given:
+  - input: ref('stg_transactions')
+    format: sql
+    fixture: risk
+  expect:
+    rows:
+    - customer_id: low
+      risk_level: LOW
+      fraud_rate: 0
+    - customer_id: medium
+      risk_level: MEDIUM
+      fraud_rate: 1
+    - customer_id: high
+      risk_level: HIGH
+      fraud_rate: 5
+- name: cleaning_and_amount_boundaries
+  model: stg_transactions
+  given:
+  - input: source('raw', 'transactions')
+    rows:
+    - transaction_id: 1
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 0
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+    - transaction_id: 2
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 99.99
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+    - transaction_id: 3
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 100
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+    - transaction_id: 4
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 999.99
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+    - transaction_id: 5
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 1000
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+    - transaction_id: 6
+      transaction_time: '2020-01-05 23:15:00'
+      merch: ' shop '
+      cat_id: ' FOOD '
+      amount: 1.6099999999999999
+      name_1: ' Ivan '
+      name_2: ' Test '
+      gender: m
+      street: ' road '
+      one_city: ' city '
+      us_state: ' ca '
+      post_code: '123'
+      lat: 0
+      lon: 0
+      merchant_lat: 0
+      merchant_lon: 0
+      target: 0
+  expect:
+    rows:
+    - transaction_id: 1
+      amount_group: SMALL
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 0
+    - transaction_id: 2
+      amount_group: SMALL
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 99.99
+    - transaction_id: 3
+      amount_group: MEDIUM
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 100
+    - transaction_id: 4
+      amount_group: MEDIUM
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 999.99
+    - transaction_id: 5
+      amount_group: LARGE
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 1000
+    - transaction_id: 6
+      amount_group: SMALL
+      category: food
+      state: CA
+      merchant: shop
+      gender: M
+      transaction_hour: 23
+      day_of_week: 7
+      amount: 1.61
+- name: state_distinct_counts
+  model: mart_fraud_by_state
+  given:
+  - input: ref('stg_transactions')
+    rows:
+    - state: CA
+      customer_id: a
+      merchant: shop
+      amount: 10
+      target: 0
+    - state: CA
+      customer_id: a
+      merchant: shop
+      amount: 20
+      target: 1
+    - state: DC
+      customer_id: b
+      merchant: shop2
+      amount: 50
+      target: 0
+  expect:
+    rows:
+    - state: CA
+      customers: 1
+      merchants: 1
+      transactions: 2
+      frauds: 1
+      total_amount: 30
+      fraud_amount: 20
+      fraud_rate: 50
+    - state: DC
+      customers: 1
+      merchants: 1
+      transactions: 1
+      frauds: 0
+      total_amount: 50
+      fraud_amount: 0
+      fraud_rate: 0
+- name: hour_groups
+  model: mart_hourly_fraud_pattern
+  given:
+  - input: ref('stg_transactions')
+    rows:
+    - day_of_week: 1
+      transaction_hour: 2
+      target: 1
+      amount: 30
+    - day_of_week: 1
+      transaction_hour: 2
+      target: 0
+      amount: 70
+    - day_of_week: 7
+      transaction_hour: 2
+      target: 0
+      amount: 20
+  expect:
+    rows:
+    - day_of_week: 1
+      transaction_hour: 2
+      transactions: 2
+      frauds: 1
+      fraud_rate: 50
+      total_amount: 100
+    - day_of_week: 7
+      transaction_hour: 2
+      transactions: 1
+      frauds: 0
+      fraud_rate: 0
+      total_amount: 20
+- name: merchant_threshold
+  model: mart_merchant_analytics
+  given:
+  - input: ref('stg_transactions')
+    format: sql
+    fixture: merchant
+  expect:
+    rows:
+    - merchant: normal
+      fraud_rate: 0
+      suspicious: 0
+    - merchant: border
+      fraud_rate: 5
+      suspicious: 1

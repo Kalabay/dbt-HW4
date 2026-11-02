@@ -1,0 +1,48 @@
+version: 2
+sources:
+- name: raw
+  database: transactions_db
+  schema: transactions_db
+  description: Размеченные транзакции из train.csv через Kafka
+  tables:
+  - name: transactions
+    description: Исходный CSV. Повторы ID объединяются через FINAL
+    columns:
+    - name: transaction_id
+      description: Номер строки CSV
+    - name: transaction_time
+      description: transaction_time
+    - name: merch
+      description: merch
+    - name: cat_id
+      description: cat_id
+    - name: amount
+      description: Сумма покупки
+    - name: name_1
+      description: name_1
+    - name: name_2
+      description: name_2
+    - name: gender
+      description: gender
+    - name: street
+      description: street
+    - name: one_city
+      description: one_city
+    - name: us_state
+      description: us_state
+    - name: post_code
+      description: post_code
+    - name: lat
+      description: lat
+    - name: lon
+      description: lon
+    - name: population_city
+      description: population_city
+    - name: jobs
+      description: jobs
+    - name: merchant_lat
+      description: merchant_lat
+    - name: merchant_lon
+      description: merchant_lon
+    - name: target
+      description: 'Фактический фрод: 0 или 1'

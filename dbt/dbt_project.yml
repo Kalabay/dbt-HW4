@@ -1,0 +1,22 @@
+name: transactions
+version: '1.0.0'
+config-version: 2
+profile: transactions
+model-paths: [models]
+macro-paths: [macros]
+test-paths: [tests]
+seed-paths: [seeds]
+vars:
+  large_amount: 1000
+  medium_amount: 100
+  high_risk: 5
+  medium_risk: 1
+  dbt_date:time_zone: UTC
+models:
+  transactions:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+      +engine: MergeTree()
+      +order_by: tuple()
